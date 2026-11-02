@@ -30,14 +30,14 @@ const { titre, description, photo, categorie, tags, portions, tempsPreparation, 
 				</li>
 			))}
 		</ul>
-		<ul class="temps">
+		<ul class="temps" data-pagefind-ignore>
 			<li>Préparation : {tempsPreparation} min</li>
 			<li>Cuisson : {tempsCuisson} min</li>
 			{tempsRepos !== undefined && <li>Repos : {tempsRepos} min</li>}
 			<li>Total : {tempsTotal(recette.data)} min</li>
 		</ul>
 		<IngredientsAjustables client:load portions={portions} groupes={groupesIngredients(recette.data)} />
-		<h2>Étapes</h2>
+		<h2 data-pagefind-ignore>Étapes</h2>
 		<Content />
 	</article>
 </Layout>

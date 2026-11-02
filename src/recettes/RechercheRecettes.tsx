@@ -18,11 +18,15 @@ interface Filtres {
 
 const BASE = import.meta.env.BASE_URL;
 
-const normaliser = (mot: string) =>
-	mot
+/** Découpe aussi les élisions et les traits d'union : « l'eau » contient « eau ». */
+const mots = (texte: string) =>
+	texte
 		.normalize('NFD')
-		.replace(/[^\p{L}\p{N}]/gu, '')
-		.toLowerCase();
+		.replace(/\p{M}/gu, '')
+		.toLowerCase()
+		.replaceAll('œ', 'oe')
+		.split(/[^\p{L}\p{N}]+/u)
+		.filter(Boolean);
 
 /**
  * Pagefind rapproche un mot absent des mots indexés qui le commencent, même réduits à leur racine :
@@ -30,18 +34,14 @@ const normaliser = (mot: string) =>
  * l'essentiel du début du mot cherché, ce qui garde les vrais pluriels : « pâtes » trouve « pâte ».
  */
 function correspondVraiment(texte: string, extrait: string) {
-	const surlignes = [...extrait.matchAll(/<mark>(.*?)<\/mark>/g)].map(([, mot]) => normaliser(mot));
+	const surlignes = [...extrait.matchAll(/<mark>(.*?)<\/mark>/g)].flatMap(([, surligne]) => mots(surligne));
 	const debutCommun = (a: string, b: string) => [...a].findIndex((lettre, rang) => lettre !== b[rang]);
-	return texte
-		.split(/\s+/)
-		.map(normaliser)
-		.filter(Boolean)
-		.every((mot) =>
-			surlignes.some((surligne) => {
-				const commun = debutCommun(mot, surligne);
-				return commun === -1 || commun >= mot.length * 0.7;
-			}),
-		);
+	return mots(texte).every((mot) =>
+		surlignes.some((surligne) => {
+			const commun = debutCommun(mot, surligne);
+			return commun === -1 || commun >= mot.length * 0.7;
+		}),
+	);
 }
 
 /** Lit les filtres de l'URL, en ignorant ceux qui n'existent pas sur le site. */
@@ -110,13 +110,16 @@ export default function RechercheRecettes({ categories, tags }: Props) {
 
 		let perimee = false;
 		(async () => {
-			const recherche = await pagefind.current!.debouncedSearch(texte);
+			// L'index ne connaît que « oeufs » et « l eau » : voir `indexPagefind`.
+			const recherche = await pagefind.current!.debouncedSearch(texte.replace(/œ/gi, 'oe').replace(/['’]/g, ' '));
 			if (recherche === null) return;
 
 			const resultats = await Promise.all(recherche.results.map((resultat) => resultat.data()));
 			if (perimee) return;
 			setUrlsTrouvees(new Set(resultats.filter(({ excerpt }) => correspondVraiment(texte, excerpt)).map(({ url }) => url)));
-		})();
+		})().catch(() => {
+			if (!perimee) setEtat('indisponible');
+		});
 		return () => {
 			perimee = true;
 		};
@@ -124,9 +127,10 @@ export default function RechercheRecettes({ categories, tags }: Props) {
 
 	useEffect(() => {
 		if (!interactif) return;
-		ecrireUrl(filtres);
+		// Sans recherche, le texte ne filtre rien : il ne doit pas rester dans les liens partagés.
+		ecrireUrl(etat === 'indisponible' ? { ...filtres, texte: '' } : filtres);
 		setAucunResultat(afficherRecettes(filtres, urlsTrouvees) === 0);
-	}, [interactif, filtres, urlsTrouvees]);
+	}, [interactif, filtres, urlsTrouvees, etat]);
 
 	function basculerTag(tag: string) {
 		const choisis = filtres.tags.includes(tag) ? filtres.tags.filter((autre) => autre !== tag) : [...filtres.tags, tag];
@@ -140,7 +144,7 @@ export default function RechercheRecettes({ categories, tags }: Props) {
 				aria-label="Rechercher une recette"
 				placeholder="Rechercher une recette"
 				disabled={etat !== 'pret'}
-				value={filtres.texte}
+				value={etat === 'indisponible' ? '' : filtres.texte}
 				onChange={(evenement) => setFiltres({ ...filtres, texte: evenement.target.value })}
 			/>
 			<select

@@ -7,8 +7,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Une seule publication à la fois : la plus récente remplace celle en attente.
 concurrency:
@@ -25,15 +23,23 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:navigateur
+      # En dernier : les tests navigateur écrivent leurs Recettes de test dans dist.
       - run: npm run build
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
-  # Dépend du build : s'il échoue, rien n'est déployé et la dernière version valide reste en ligne.
+  # Dépend du build et des tests : s'ils échouent, rien n'est déployé et la dernière version valide reste en ligne.
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deploiement.outputs.page_url }}

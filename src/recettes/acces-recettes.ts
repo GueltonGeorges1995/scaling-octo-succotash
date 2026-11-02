@@ -1,11 +1,12 @@
 import { getCollection } from 'astro:content';
+import { brouillonsVisibles } from './brouillons';
 import { CATEGORIES } from './schema';
 
 const ordreFrancais = new Intl.Collator('fr');
 
 /** Seule source des Recettes visibles, triées par titre : les Brouillons n'existent que sous `astro dev`. */
 export async function lireRecettes() {
-	const recettes = await getCollection('recettes', ({ data }) => import.meta.env.DEV || !data.brouillon);
+	const recettes = await getCollection('recettes', ({ data }) => brouillonsVisibles || !data.brouillon);
 	return recettes.sort((a, b) => ordreFrancais.compare(a.data.titre, b.data.titre));
 }
 

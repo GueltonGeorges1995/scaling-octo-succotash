@@ -15,7 +15,7 @@ export default function IngredientsAjustables({ portions, groupes }: Props) {
 
 	return (
 		<>
-			<p className="selecteur-portions">
+			<p className="selecteur-portions" data-pagefind-ignore>
 				Portions : <output>{voulues}</output>{' '}
 				<button
 					type="button"
@@ -34,7 +34,7 @@ export default function IngredientsAjustables({ portions, groupes }: Props) {
 					+
 				</button>
 			</p>
-			<h2>Ingrédients</h2>
+			<h2 data-pagefind-ignore>Ingrédients</h2>
 			{groupes.map(({ groupe, ingredients }, index) => (
 				<div key={index}>
 					{groupe && <h3>{groupe}</h3>}

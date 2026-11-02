@@ -1,4 +1,6 @@
 // @ts-check
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'astro/config';
 import { close, createIndex } from 'pagefind';
@@ -16,10 +18,18 @@ function indexPagefind() {
         const { index, errors } = await createIndex({ forceLanguage: 'fr' });
         if (!index) throw new Error(`Pagefind : ${errors.join(', ')}`);
 
-        const erreurs = [
-          ...(await index.addDirectory({ path: sortie })).errors,
-          ...(await index.writeFiles({ outputPath: `${sortie}pagefind` })).errors,
-        ];
+        const erreurs = [];
+        const pages = readdirSync(sortie, { recursive: true, encoding: 'utf-8' }).filter((nom) => nom.endsWith('.html'));
+        for (const page of pages) {
+          // Pagefind ne rapproche pas « œufs » de « oeufs » et lit « l'eau » comme un seul mot : on n'indexe
+          // que « oeufs » et « l eau ». Seul l'index voit ces écritures, jamais le visiteur.
+          const content = readFileSync(join(sortie, page), 'utf-8')
+            .replaceAll('œ', 'oe')
+            .replaceAll('Œ', 'Oe')
+            .replace(/(?<=\p{L})(?:['’]|&#x27;|&#39;)(?=\p{L})/gu, ' ');
+          erreurs.push(...(await index.addHTMLFile({ sourcePath: page.replaceAll('\\', '/'), content })).errors);
+        }
+        erreurs.push(...(await index.writeFiles({ outputPath: `${sortie}pagefind` })).errors);
         await close();
         if (erreurs.length > 0) throw new Error(`Pagefind : ${erreurs.join(', ')}`);
       },

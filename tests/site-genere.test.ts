@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
+import { gunzipSync } from 'node:zlib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const racine = resolve(import.meta.dirname, '..');
@@ -90,10 +91,29 @@ describe('Brouillons', { timeout: 120_000 }, () => {
 		try {
 			expect(existsSync(join(sortie, 'brouillon-secret'))).toBe(false);
 			expect(existsSync(join(sortie, 'tarte-aux-pommes/index.html'))).toBe(true);
+			// Les fichiers de l'index Pagefind sont compressés : illisibles tels quels, ils ne prouveraient rien.
+			const lireContenu = (fichier: string) =>
+				/\.pf_\w+$/.test(fichier) ? gunzipSync(readFileSync(fichier)).toString('utf-8') : readFileSync(fichier, 'utf-8');
+
+			expect(fichiers(sortie).some((fichier) => fichier.endsWith('.pf_fragment') && lireContenu(fichier).includes('Tarte aux pommes'))).toBe(true);
 			for (const fichier of fichiers(sortie)) {
-				expect(readFileSync(fichier, 'utf-8'), fichier).not.toContain('Brouillon secret');
-				expect(readFileSync(fichier, 'utf-8'), fichier).not.toContain('Étape encore confidentielle');
+				expect(lireContenu(fichier), fichier).not.toContain('Brouillon secret');
+				expect(lireContenu(fichier), fichier).not.toContain('Étape encore confidentielle');
 			}
+		} finally {
+			rmSync(sortie, { recursive: true, force: true });
+		}
+	});
+
+	it("exclut les Brouillons même si l'environnement se dit en développement", async () => {
+		const sortie = mkdtempSync(join(tmpdir(), 'recettes-build-'));
+		const env: NodeJS.ProcessEnv = { ...process.env, RECETTES_DIR: 'tests/fixtures/recettes-publiees', REFERENTIEL_TAGS: 'tests/fixtures/tags.md' };
+		for (const variable of VARIABLES_VITEST) delete env[variable];
+		env.NODE_ENV = 'development';
+		try {
+			await promisify(exec)(`npm run build -- --outDir "${sortie}"`, { cwd: racine, env });
+			expect(existsSync(join(sortie, 'tarte-aux-pommes/index.html'))).toBe(true);
+			expect(existsSync(join(sortie, 'brouillon-secret'))).toBe(false);
 		} finally {
 			rmSync(sortie, { recursive: true, force: true });
 		}
