@@ -30,7 +30,7 @@ function indexPagefind() {
 // https://astro.build/config
 export default defineConfig({
   site: 'https://gueltongeorges1995.github.io',
-  base: '/recettes/',
+  base: '/scaling-octo-succotash/',
   output: 'static',
   integrations: [react(), mdx(), indexPagefind()]
 });

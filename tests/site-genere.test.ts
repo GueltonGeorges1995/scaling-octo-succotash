@@ -41,7 +41,7 @@ describe('site généré', () => {
 		expect(html).toContain('Tarte aux pommes');
 		expect(html).toContain('Étaler la pâte.');
 		expect(html).toContain(
-			'<link rel="canonical" href="https://gueltongeorges1995.github.io/recettes/tarte-aux-pommes/"',
+			'<link rel="canonical" href="https://gueltongeorges1995.github.io/scaling-octo-succotash/tarte-aux-pommes/"',
 		);
 	});
 
@@ -64,14 +64,14 @@ describe('site généré', () => {
 
 			expect(liens).not.toHaveLength(0);
 			for (const lien of liens) {
-				expect(lien).toMatch(/^\/recettes\//);
+				expect(lien).toMatch(/^\/scaling-octo-succotash\//);
 			}
 		}
 	});
 
 	it('génère les ressources aux emplacements annoncés par les liens', () => {
 		for (const lien of liensInternes(lire('tarte-aux-pommes/index.html'))) {
-			const chemin = lien.replace(/^\/recettes\//, '').replace(/[?#].*$/, '');
+			const chemin = lien.replace(/^\/scaling-octo-succotash\//, '').replace(/[?#].*$/, '');
 			const cible = chemin === '' || chemin.endsWith('/') ? join(chemin, 'index.html') : chemin;
 
 			expect(existsSync(join(sortie, cible)), lien).toBe(true);
@@ -267,9 +267,9 @@ describe('accueil', { timeout: 120_000 }, () => {
 		it('mène à la page de chaque Recette', () => {
 			const liens = liensInternes(accueil(sortie));
 
-			expect(liens).toContain('/recettes/tarte-aux-pommes/');
-			expect(liens).toContain('/recettes/quiche-en-groupes/');
-			expect(liens).toContain('/recettes/un-eclair-au-cafe/');
+			expect(liens).toContain('/scaling-octo-succotash/tarte-aux-pommes/');
+			expect(liens).toContain('/scaling-octo-succotash/quiche-en-groupes/');
+			expect(liens).toContain('/scaling-octo-succotash/un-eclair-au-cafe/');
 		});
 
 		it("trie par ordre alphabétique français, accents compris", () => {
@@ -318,19 +318,19 @@ describe('Catégories', { timeout: 120_000 }, () => {
 
 		it('liste les Recettes de la Catégorie, et elles seules, par ordre alphabétique français', () => {
 			const recettes = liensInternes(lire('categorie/dessert/index.html').match(/<main\b.*?<\/main>/s)?.[0] ?? '').filter(
-				(lien) => !lien.includes('_astro') && lien !== '/recettes/',
+				(lien) => !lien.includes('_astro') && lien !== '/scaling-octo-succotash/',
 			);
 
-			expect(recettes).toEqual(['/recettes/un-eclair-au-cafe/', '/recettes/tarte-aux-pommes/']);
+			expect(recettes).toEqual(['/scaling-octo-succotash/un-eclair-au-cafe/', '/scaling-octo-succotash/tarte-aux-pommes/']);
 		});
 
 		it.each(['index.html', 'tarte-aux-pommes/index.html', 'categorie/dessert/index.html'])(
 			'propose dans le menu de %s les seules Catégories publiées',
 			(page) => {
 				expect(menu(lire(page))).toEqual([
-					'/recettes/categorie/plat/',
-					'/recettes/categorie/dessert/',
-					'/recettes/categorie/petit-dejeuner/',
+					'/scaling-octo-succotash/categorie/plat/',
+					'/scaling-octo-succotash/categorie/dessert/',
+					'/scaling-octo-succotash/categorie/petit-dejeuner/',
 				]);
 			},
 		);
@@ -408,8 +408,8 @@ describe('photo de couverture', { timeout: 120_000 }, () => {
 		expect(autres).toHaveLength(0);
 		expect(balise).toContain('alt="Tarte aux pommes"');
 		for (const source of sources(balise)) {
-			expect(source).toMatch(/^\/recettes\/_astro\/.+\.webp/);
-			expect(existsSync(join(sortie, source.replace(/^\/recettes\//, '').replace(/\?.*$/, ''))), source).toBe(true);
+			expect(source).toMatch(/^\/scaling-octo-succotash\/_astro\/.+\.webp/);
+			expect(existsSync(join(sortie, source.replace(/^\/scaling-octo-succotash\//, '').replace(/\?.*$/, ''))), source).toBe(true);
 		}
 	});
 

@@ -101,7 +101,7 @@ test("ouvre l'accueil filtré en cliquant sur un Tag d'une Recette", async ({ pa
 	await page.goto('tarte-aux-pommes/');
 	await page.getByRole('link', { name: 'végétarien' }).click();
 
-	await expect(page).toHaveURL(/\/recettes\/\?tag=v/);
+	await expect(page).toHaveURL(/\/scaling-octo-succotash\/\?tag=v/);
 	await expect(tag(page, 'végétarien')).toBeChecked();
 	await expect(titres(page)).toHaveText(['Tarte aux pommes']);
 });
