@@ -1,0 +1,43 @@
+---
+import { lireCategories } from '../recettes/acces-recettes';
+import '../styles/global.css';
+
+interface Props {
+	titre: string;
+}
+
+const { titre } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const categories = await lireCategories();
+---
+
+<!doctype html>
+<html lang="fr">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+		<link rel="icon" href={`${base}favicon.ico`} />
+		<link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+		<meta name="generator" content={Astro.generator} />
+		<title>{titre}</title>
+	</head>
+	<body>
+		{
+			categories.length > 0 && (
+				<nav aria-label="Catégories">
+					<ul>
+						{categories.map(({ nom, slug }) => (
+							<li>
+								<a href={`${base}categorie/${slug}/`}>{nom}</a>
+							</li>
+						))}
+					</ul>
+				</nav>
+			)
+		}
+		<main>
+			<slot />
+		</main>
+	</body>
+</html>

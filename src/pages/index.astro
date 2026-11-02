@@ -1,0 +1,23 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { lireCategories, lireRecettes, lireTags } from '../recettes/acces-recettes';
+import ListeRecettes from '../recettes/ListeRecettes.astro';
+import RechercheRecettes from '../recettes/RechercheRecettes';
+
+const recettes = await lireRecettes();
+const categories = (await lireCategories()).map(({ nom }) => nom);
+const tags = await lireTags();
+---
+
+<Layout titre="Recettes">
+	<h1>Recettes</h1>
+	{recettes.length === 0 && <p>Aucune recette pour l'instant</p>}
+	{
+		recettes.length > 0 && (
+			<>
+				<RechercheRecettes client:load categories={categories} tags={tags} />
+				<ListeRecettes recettes={recettes} />
+			</>
+		)
+	}
+</Layout>

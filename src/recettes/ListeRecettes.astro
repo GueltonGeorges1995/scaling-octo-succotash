@@ -1,0 +1,32 @@
+---
+import { Image } from 'astro:assets';
+import type { lireRecettes } from './acces-recettes';
+import { tempsTotal } from './schema';
+
+interface Props {
+	recettes: Awaited<ReturnType<typeof lireRecettes>>;
+}
+
+const { recettes } = Astro.props;
+---
+
+<ul class="liste-recettes">
+	{recettes.map(({ id, data }) => (
+		<li data-recette={`${import.meta.env.BASE_URL}${id}/`} data-categorie={data.categorie} data-tags={JSON.stringify(data.tags)}>
+			<h2>
+				<a href={`${import.meta.env.BASE_URL}${id}/`}>{data.titre}</a>
+			</h2>
+			{data.photo && <Image src={data.photo} alt={data.titre} width={400} densities={[1, 2]} />}
+			<p>{data.description}</p>
+			<p class="categorie">{data.categorie}</p>
+			{data.tags.length > 0 && (
+				<ul class="tags">
+					{data.tags.map((tag) => (
+						<li>{tag}</li>
+					))}
+				</ul>
+			)}
+			<p>Total : {tempsTotal(data)} min</p>
+		</li>
+	))}
+</ul>

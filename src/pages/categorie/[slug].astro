@@ -1,0 +1,18 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { lireCategories } from '../../recettes/acces-recettes';
+import ListeRecettes from '../../recettes/ListeRecettes.astro';
+
+export async function getStaticPaths() {
+	const categories = await lireCategories();
+	return categories.map(({ slug, nom, recettes }) => ({ params: { slug }, props: { nom, recettes } }));
+}
+
+const { nom, recettes } = Astro.props;
+---
+
+<Layout titre={nom}>
+	<a class="retour" href={import.meta.env.BASE_URL}>Toutes les recettes</a>
+	<h1>{nom}</h1>
+	<ListeRecettes recettes={recettes} />
+</Layout>

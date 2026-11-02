@@ -1,0 +1,281 @@
+:root {
+	color-scheme: light;
+	--fond: #fbfaf7;
+	--texte: #1f1d1a;
+	--discret: #5c574f;
+	--accent: #8a3b12;
+	--separateur: #d9d4ca;
+	--controle: #857f73;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		color-scheme: dark;
+		--fond: #181715;
+		--texte: #efebe3;
+		--discret: #b5afa4;
+		--accent: #f0a36f;
+		--separateur: #45413a;
+		--controle: #8f897d;
+	}
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	background: var(--fond);
+	color: var(--texte);
+	font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	font-size: clamp(1.125rem, 1rem + 0.5vw, 1.3rem);
+	line-height: 1.6;
+	overflow-wrap: anywhere;
+}
+
+nav,
+main {
+	max-width: 44rem;
+	margin-inline: auto;
+	padding-inline: 1rem;
+}
+
+nav {
+	padding-block: 0.75rem;
+	border-bottom: 1px solid var(--separateur);
+}
+
+nav ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem 1.25rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+main {
+	padding-block: 1.5rem 3rem;
+}
+
+h1,
+h2,
+h3 {
+	line-height: 1.2;
+	text-wrap: balance;
+}
+
+h1 {
+	margin-block: 0.5rem 1rem;
+	font-size: clamp(2.25rem, 1.75rem + 2.5vw, 3.25rem);
+}
+
+h2 {
+	margin-block: 2rem 0.75rem;
+	font-size: 1.6rem;
+}
+
+h3 {
+	margin-block: 1.25rem 0.5rem;
+	font-size: 1.2rem;
+}
+
+a {
+	color: var(--accent);
+	text-underline-offset: 0.15em;
+}
+
+:focus-visible {
+	outline: 3px solid var(--accent);
+	outline-offset: 2px;
+}
+
+img {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	border-radius: 0.5rem;
+}
+
+input,
+select,
+button {
+	max-width: 100%;
+	color: inherit;
+	font: inherit;
+}
+
+input[type='search'],
+select,
+button {
+	min-height: 2.75rem;
+	border: 1px solid var(--controle);
+	border-radius: 0.375rem;
+	background: transparent;
+}
+
+input[type='search'],
+select {
+	padding-inline: 0.75rem;
+}
+
+input[type='search'] {
+	width: 100%;
+}
+
+select option {
+	background: var(--fond);
+	color: var(--texte);
+}
+
+input[type='checkbox'] {
+	width: 1.25rem;
+	height: 1.25rem;
+	accent-color: var(--accent);
+	vertical-align: -0.15em;
+}
+
+button {
+	min-width: 2.75rem;
+	cursor: pointer;
+}
+
+:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.recherche {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.75rem;
+	margin-block-end: 1.5rem;
+}
+
+.recherche fieldset {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem 1.25rem;
+	min-width: 0;
+	width: 100%;
+	margin: 0;
+	border: 1px solid var(--separateur);
+	border-radius: 0.375rem;
+}
+
+.recherche p {
+	margin: 0;
+}
+
+.recherche label {
+	padding-block: 0.25rem;
+}
+
+.liste-recettes {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.liste-recettes > li {
+	padding-block: 1.25rem;
+	border-top: 1px solid var(--separateur);
+}
+
+.liste-recettes h2 {
+	margin-block: 0 0.5rem;
+}
+
+.liste-recettes p {
+	margin-block: 0.5rem;
+}
+
+.liste-recettes img {
+	margin-block: 0.75rem;
+}
+
+.tags,
+.temps {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem 1rem;
+	padding: 0;
+	list-style: none;
+	color: var(--discret);
+}
+
+.tags {
+	margin-block: 0.5rem;
+}
+
+.tags a {
+	display: inline-block;
+	padding-block: 0.25rem;
+}
+
+.categorie {
+	color: var(--discret);
+}
+
+.selecteur-portions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem;
+	font-weight: 600;
+}
+
+@media print {
+	:root {
+		color-scheme: light;
+		--fond: #fff;
+		--texte: #000;
+		--discret: #000;
+		--accent: #000;
+		--separateur: #999;
+	}
+
+	body {
+		font-size: 11pt;
+	}
+
+	nav,
+	.retour,
+	.recherche,
+	.selecteur-portions button {
+		display: none;
+	}
+
+	main {
+		max-width: none;
+		padding: 0;
+	}
+
+	a {
+		text-decoration: none;
+	}
+
+	h2,
+	h3 {
+		break-after: avoid;
+	}
+
+	li,
+	img {
+		break-inside: avoid;
+	}
+
+	img {
+		max-height: 8cm;
+		width: auto;
+	}
+}

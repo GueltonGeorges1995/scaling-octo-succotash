@@ -1,0 +1,43 @@
+---
+import { Image } from 'astro:assets';
+import { render } from 'astro:content';
+import Layout from '../layouts/Layout.astro';
+import { lireRecettes } from '../recettes/acces-recettes';
+import IngredientsAjustables from '../recettes/IngredientsAjustables';
+import { groupesIngredients, tempsTotal } from '../recettes/schema';
+
+export async function getStaticPaths() {
+	const recettes = await lireRecettes();
+	return recettes.map((recette) => ({ params: { id: recette.id }, props: { recette } }));
+}
+
+const { recette } = Astro.props;
+const { Content } = await render(recette);
+const { titre, description, photo, categorie, tags, portions, tempsPreparation, tempsCuisson, tempsRepos } = recette.data;
+---
+
+<Layout titre={titre}>
+	<a class="retour" href={import.meta.env.BASE_URL}>Toutes les recettes</a>
+	<article data-pagefind-body>
+		<h1>{titre}</h1>
+		{photo && <Image src={photo} alt={titre} width={800} densities={[1, 2]} />}
+		<p>{description}</p>
+		<p class="categorie">{categorie}</p>
+		<ul class="tags">
+			{tags.map((tag) => (
+				<li>
+					<a href={`${import.meta.env.BASE_URL}?tag=${encodeURIComponent(tag)}`}>{tag}</a>
+				</li>
+			))}
+		</ul>
+		<ul class="temps">
+			<li>Préparation : {tempsPreparation} min</li>
+			<li>Cuisson : {tempsCuisson} min</li>
+			{tempsRepos !== undefined && <li>Repos : {tempsRepos} min</li>}
+			<li>Total : {tempsTotal(recette.data)} min</li>
+		</ul>
+		<IngredientsAjustables client:load portions={portions} groupes={groupesIngredients(recette.data)} />
+		<h2>Étapes</h2>
+		<Content />
+	</article>
+</Layout>
