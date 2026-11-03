@@ -1,6 +1,6 @@
 import { exec, spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -25,22 +25,40 @@ async function construireSite(recettes: string, referentiel = 'tags.md', variabl
 }
 
 /**
- * Lance `astro dev` sans passer par `npx`, dont l'arrêt laisse vivre le serveur.
- * `--ignore-lock` évite de remplacer ou de bloquer un serveur de dev déjà lancé dans le projet.
+ * Copie du projet dont les fichiers sont des liens vers l'original. `astro dev` écrit son contenu dans
+ * `<racine>/.astro` et Vite son cache dans `<racine>/node_modules/.vite` : lancés sur le vrai projet,
+ * les Recettes de test remplaceraient celles du serveur de dev de l'auteur.
  */
+function racineIsolee() {
+	const copie = mkdtempSync(join(tmpdir(), 'recettes-dev-'));
+	const lien = (chemin: string) => symlinkSync(join(racine, chemin), join(copie, chemin), 'junction');
+	for (const dossier of ['src', 'public', 'tests']) lien(dossier);
+	for (const fichier of ['astro.config.mjs', 'package.json', 'tsconfig.json']) copyFileSync(join(racine, fichier), join(copie, fichier));
+	mkdirSync(join(copie, 'node_modules'));
+	for (const paquet of readdirSync(join(racine, 'node_modules'))) {
+		if (paquet !== '.vite' && paquet !== '.astro') lien(join('node_modules', paquet));
+	}
+	return copie;
+}
+
+/** Lance `astro dev` sans passer par `npx`, dont l'arrêt laisse vivre le serveur. */
 async function lancerServeurDev(recettes: string, options: string[]) {
-	const serveur = spawn(process.execPath, [join(racine, 'node_modules/astro/bin/astro.mjs'), ...options, '--ignore-lock', '--port', '4390'], {
-		cwd: racine,
+	const copie = racineIsolee();
+	const serveur = spawn(process.execPath, [join(copie, 'node_modules/astro/bin/astro.mjs'), ...options, '--port', '4390'], {
+		cwd: copie,
 		env: { ...environnement(recettes), NO_COLOR: '1', FORCE_COLOR: '0' },
 		detached: process.platform !== 'win32',
 	});
 	const arreter = async () => {
-		if (serveur.exitCode !== null || serveur.signalCode !== null) return;
-		const fin = once(serveur, 'exit');
-		// Le serveur peut avoir des processus enfants : on arrête toute l'arborescence.
-		if (process.platform === 'win32') spawn('taskkill', ['/pid', String(serveur.pid), '/t', '/f']);
-		else process.kill(-serveur.pid!, 'SIGKILL');
-		await fin;
+		if (serveur.exitCode === null && serveur.signalCode === null) {
+			const fin = once(serveur, 'exit');
+			// Le serveur peut avoir des processus enfants : on arrête toute l'arborescence.
+			if (process.platform === 'win32') spawn('taskkill', ['/pid', String(serveur.pid), '/t', '/f']);
+			else process.kill(-serveur.pid!, 'SIGKILL');
+			await fin;
+		}
+		// Supprime les liens, jamais leurs cibles.
+		rmSync(copie, { recursive: true, force: true });
 	};
 
 	let sortie = '';
@@ -192,7 +210,10 @@ describe('Brouillons', { timeout: 120_000 }, () => {
 	it.each([
 		['astro dev', ['dev']],
 		['une option avant dev', ['--root', '.', 'dev']],
-	])('montre un Brouillon sous %s', async (_cas, options) => {
+	])('montre un Brouillon sous %s, sans toucher aux caches du projet', async (_cas, options) => {
+		const caches = () =>
+			['.astro/data-store.json', 'node_modules/.vite/deps'].map((chemin) => existsSync(join(racine, chemin)) && statSync(join(racine, chemin)).mtimeMs);
+		const avant = caches();
 		const serveur = await lancerServeurDev('recettes-publiees', options);
 		try {
 			const reponse = await fetch(`${serveur.url}brouillon-secret/`);
@@ -203,6 +224,7 @@ describe('Brouillons', { timeout: 120_000 }, () => {
 			await serveur.arreter();
 		}
 		await expect(fetch(serveur.url), 'le serveur répond encore après son arrêt').rejects.toThrow();
+		expect(caches()).toEqual(avant);
 	});
 
 	it('réussit le build lorsque toutes les Recettes sont des Brouillons', async () => {
