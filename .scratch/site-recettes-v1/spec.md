@@ -142,6 +142,7 @@ Un site 100 % statique en français, construit avec Astro et React, hébergé su
 ### Contenu de départ
 
 - Quelques Recettes inventées, toutes en Brouillon, couvrant notamment les Groupes d'ingrédients et un Ingrédient sans quantité. Aucun contenu fictif n'est publié, donc le site publié démarre vide.
+- Révisé le 2026-11-03 : l'auteur est revenu sur cette règle. Six Recettes sont publiées depuis le commit du 2026-11-03 « Publie six Recettes », sans `brouillon: true`, et le site publié ne démarre plus vide.
 
 ## Testing Decisions
 

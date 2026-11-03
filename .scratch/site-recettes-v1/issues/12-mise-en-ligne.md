@@ -7,12 +7,14 @@
 **Status:** resolved
 
 - [x] Le workflow GitHub Actions construit et déploie à chaque push sur `main`, avec une version de Node respectant la contrainte `engines`
-- [x] Un build en échec ne déploie rien, et la dernière version valide reste en ligne
+- [ ] Un build en échec ne déploie rien, et la dernière version valide reste en ligne (vérifié par le ticket 13)
 - [x] La branche `master` est renommée `main`
 - [x] L'adresse `noreply` de GitHub est configurée pour ce dépôt, et le commit `04c27b8` est réécrit pour ne plus exposer l'adresse personnelle ; l'historique est vérifié avant le premier push
 - [x] Le dépôt public `scaling-octo-succotash` est créé et GitHub Pages est activé avec GitHub Actions comme source
-- [x] Le site en ligne fonctionne : accueil, message de site vide, ressources et index de recherche se chargent sous `/scaling-octo-succotash/`
+- [ ] Le site en ligne fonctionne : accueil, message de site vide, ressources et index de recherche se chargent sous `/scaling-octo-succotash/` (vérifié par le ticket 13)
 
 ## Comments
 
 Le commit `04c27b8`, poussé avant la réécriture de l'historique, restait lisible sur GitHub par son SHA. L'auteur a donc supprimé le dépôt `recettes` et publié le code dans le dépôt `scaling-octo-succotash`, avec un historique repartant d'un seul commit. Le chemin de base devient `/scaling-octo-succotash/` ; la spec et les tickets résolus gardent l'ancien chemin `/recettes/`. Le site est en ligne et confirmé par l'auteur ; sans Recette publiée, seule la page d'accueil vide a pu être vérifiée en ligne. Le refus de déploiement sur un build en échec repose sur `needs: build` : il n'a pas encore été observé sur GitHub.
+
+Révisé le 2026-11-03 : les deux cases ci-dessus étaient cochées sans avoir été vérifiées. Elles sont décochées, et leur vérification passe au ticket 13, maintenant que six Recettes sont publiées.
