@@ -14,7 +14,20 @@ describe('estBrouillon', () => {
 		expect(estBrouillon('---\r\ntitre: Essai\r\nbrouillon: true\r\n---\r\n')).toBe(true);
 	});
 
-	for (const entete of ['brouillon: false', 'brouillon: oui', 'description: brouillon: true', '# brouillon: true']) {
+	for (const [cas, source] of [
+		['un BOM', '﻿---\nbrouillon: true\n---\n'],
+		['une ligne vide en tête', '\n---\nbrouillon: true\n---\n'],
+		['une clé entre guillemets', '---\n"brouillon": true\n---\n'],
+		['un en-tête JSON', '---\n{"titre":"Essai","brouillon":true}\n---\n'],
+		['une valeur à la ligne', '---\nbrouillon:\n  true\n---\n'],
+		['un en-tête TOML', '+++\nbrouillon = true\n+++\n'],
+	]) {
+		it(`reconnaît ${cas}, comme Astro`, () => {
+			expect(estBrouillon(source)).toBe(true);
+		});
+	}
+
+	for (const entete of ['brouillon: false', 'brouillon: oui', 'Brouillon: true', 'description: brouillon: true', '# brouillon: true']) {
 		it(`ne retient pas « ${entete} »`, () => {
 			expect(estBrouillon(recette(entete))).toBe(false);
 		});

@@ -22,6 +22,7 @@ test.describe('trouve une Recette par', () => {
 		['un mot après une élision', 'eau', 'Quiche en groupes'],
 		['un mot saisi avec son élision', "l'eau", 'Quiche en groupes'],
 		['un mot saisi avec une apostrophe typographique', 'l’eau', 'Quiche en groupes'],
+		['un mot saisi avec une autre élision que celle du contenu', "d'eau", 'Quiche en groupes'],
 		['un mot écrit avec la ligature', 'œufs', 'Quiche en groupes'],
 		['un mot écrit sans la ligature', 'oeufs', 'Quiche en groupes'],
 	]) {
@@ -60,8 +61,7 @@ for (const mot of ['cuisson', 'préparation', 'portions', 'étapes']) {
 
 test('trouve un mot après un trait d\'union', async ({ page }) => {
 	await chercher(page, 'déjeuner');
-	await expect(titres(page)).not.toHaveCount(0);
-	await expect(titres(page)).not.toHaveCount(4);
+	await expect(titres(page)).toHaveText(['Tartines beurrées']);
 });
 
 test('réaffiche toute la liste quand le champ est vidé', async ({ page }) => {
@@ -106,6 +106,22 @@ test('signale une recherche qui échoue après le chargement', async ({ page }) 
 
 	await expect(page.getByText('La recherche est indisponible')).toBeVisible();
 	await expect(titres(page)).toHaveCount(4);
+	await expect(champ).toHaveValue('farine');
+	await expect(page).toHaveURL(/\?q=farine$/);
+});
+
+test('réessaie à la saisie suivante après une panne passagère', async ({ page }) => {
+	const champ = page.getByRole('searchbox', { name: 'Rechercher une recette' });
+	await expect(champ).toBeEnabled();
+	await page.route('**/pagefind/**', (route) => route.abort());
+	await champ.fill('farine');
+	await expect(page.getByText('La recherche est indisponible')).toBeVisible();
+
+	await page.unroute('**/pagefind/**');
+	await champ.fill('quiche');
+
+	await expect(titres(page)).toHaveText(['Quiche en groupes']);
+	await expect(page.getByText('La recherche est indisponible')).toBeHidden();
 });
 
 test.describe('sans JavaScript', () => {

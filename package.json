@@ -15,6 +15,7 @@
     "check": "astro check"
   },
   "dependencies": {
+    "@astrojs/internal-helpers": "^0.13.0",
     "@astrojs/markdown-satteri": "^0.4.6",
     "@astrojs/mdx": "^8.1.2",
     "@astrojs/react": "^7.1.2",

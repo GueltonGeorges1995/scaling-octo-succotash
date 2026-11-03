@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { ecritureIndex, sansElisions } from './texte-recherche';
 
 interface Pagefind {
 	options(options: { baseUrl: string; excerptLength: number }): Promise<void>;
+	destroy(): Promise<void>;
 	debouncedSearch(texte: string): Promise<{ results: { data(): Promise<{ url: string; excerpt: string }> }[] } | null>;
 }
 
@@ -17,14 +19,15 @@ interface Filtres {
 }
 
 const BASE = import.meta.env.BASE_URL;
+// Un extrait assez long pour contenir tous les mots surlignés d'une Recette.
+const REGLAGES = { baseUrl: BASE, excerptLength: 2000 };
 
 /** Découpe aussi les élisions et les traits d'union : « l'eau » contient « eau ». */
 const mots = (texte: string) =>
-	texte
+	ecritureIndex(texte)
 		.normalize('NFD')
 		.replace(/\p{M}/gu, '')
 		.toLowerCase()
-		.replaceAll('œ', 'oe')
 		.split(/[^\p{L}\p{N}]+/u)
 		.filter(Boolean);
 
@@ -36,7 +39,7 @@ const mots = (texte: string) =>
 function correspondVraiment(texte: string, extrait: string) {
 	const surlignes = [...extrait.matchAll(/<mark>(.*?)<\/mark>/g)].flatMap(([, surligne]) => mots(surligne));
 	const debutCommun = (a: string, b: string) => [...a].findIndex((lettre, rang) => lettre !== b[rang]);
-	return mots(texte).every((mot) =>
+	return mots(sansElisions(texte)).every((mot) =>
 		surlignes.some((surligne) => {
 			const commun = debutCommun(mot, surligne);
 			return commun === -1 || commun >= mot.length * 0.7;
@@ -80,12 +83,15 @@ function afficherRecettes({ categorie, tags }: Filtres, urls: Set<string> | null
 
 export default function RechercheRecettes({ categories, tags }: Props) {
 	const pagefind = useRef<Pagefind | null>(null);
+	const reinitialisation = useRef(Promise.resolve());
 	const [etat, setEtat] = useState<'chargement' | 'pret' | 'indisponible'>('chargement');
 	// Sans JavaScript, les contrôles restent désactivés : ils ne promettent rien qu'ils ne puissent tenir.
 	const [interactif, setInteractif] = useState(false);
 	const [filtres, setFiltres] = useState<Filtres>({ texte: '', categorie: '', tags: [] });
 	const [urlsTrouvees, setUrlsTrouvees] = useState<Set<string> | null>(null);
 	const [aucunResultat, setAucunResultat] = useState(false);
+	// Une panne passagère : la saisie suivante réessaie, et le lien partagé garde son texte.
+	const [echec, setEchec] = useState(false);
 
 	useEffect(() => {
 		setFiltres(lireUrl(categories, tags));
@@ -96,8 +102,7 @@ export default function RechercheRecettes({ categories, tags }: Props) {
 
 		import(/* @vite-ignore */ `${BASE}pagefind/pagefind.js`)
 			.then(async (module: Pagefind) => {
-				// Un extrait assez long pour contenir tous les mots surlignés d'une Recette.
-				await module.options({ baseUrl: BASE, excerptLength: 2000 });
+				await module.options(REGLAGES);
 				pagefind.current = module;
 				setEtat('pret');
 			})
@@ -106,19 +111,25 @@ export default function RechercheRecettes({ categories, tags }: Props) {
 
 	useEffect(() => {
 		const texte = filtres.texte;
+		setEchec(false);
 		if (etat !== 'pret' || texte.trim() === '') return setUrlsTrouvees(null);
 
 		let perimee = false;
 		(async () => {
-			// L'index ne connaît que « oeufs » et « l eau » : voir `indexPagefind`.
-			const recherche = await pagefind.current!.debouncedSearch(texte.replace(/œ/gi, 'oe').replace(/['’]/g, ' '));
+			await reinitialisation.current;
+			const recherche = await pagefind.current!.debouncedSearch(ecritureIndex(sansElisions(texte)));
 			if (recherche === null) return;
 
 			const resultats = await Promise.all(recherche.results.map((resultat) => resultat.data()));
 			if (perimee) return;
 			setUrlsTrouvees(new Set(resultats.filter(({ excerpt }) => correspondVraiment(texte, excerpt)).map(({ url }) => url)));
 		})().catch(() => {
-			if (!perimee) setEtat('indisponible');
+			if (perimee) return;
+			// Pagefind garde pour toujours une erreur survenue à son initialisation : il faut repartir de zéro.
+			const module = pagefind.current!;
+			reinitialisation.current = module.destroy().then(() => module.options(REGLAGES));
+			setUrlsTrouvees(null);
+			setEchec(true);
 		});
 		return () => {
 			perimee = true;
@@ -174,7 +185,7 @@ export default function RechercheRecettes({ categories, tags }: Props) {
 					))}
 				</fieldset>
 			)}
-			{etat === 'indisponible' && (
+			{(etat === 'indisponible' || echec) && (
 				<p>
 					{import.meta.env.DEV
 						? "La recherche n'est disponible qu'après un build : lancez `npm run build` puis `npm run preview`."

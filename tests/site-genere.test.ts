@@ -1,5 +1,6 @@
-import { exec } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { exec, spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -11,13 +12,56 @@ const racine = resolve(import.meta.dirname, '..');
 // Variables posées par Vitest : héritées, elles fausseraient le build (BASE_URL écrase le chemin de base).
 const VARIABLES_VITEST = ['BASE_URL', 'MODE', 'DEV', 'PROD', 'SSR', 'TEST', 'VITEST', 'NODE_ENV'];
 
-async function construireSite(recettes: string, referentiel = 'tags.md') {
-	const sortie = mkdtempSync(join(tmpdir(), 'recettes-build-'));
+function environnement(recettes: string, referentiel = 'tags.md', variables: NodeJS.ProcessEnv = {}) {
 	const env: NodeJS.ProcessEnv = { ...process.env, RECETTES_DIR: `tests/fixtures/${recettes}`, REFERENTIEL_TAGS: `tests/fixtures/${referentiel}` };
 	for (const variable of VARIABLES_VITEST) delete env[variable];
+	return Object.assign(env, variables);
+}
 
-	await promisify(exec)(`npm run build -- --outDir "${sortie}"`, { cwd: racine, env });
+async function construireSite(recettes: string, referentiel = 'tags.md', variables: NodeJS.ProcessEnv = {}) {
+	const sortie = mkdtempSync(join(tmpdir(), 'recettes-build-'));
+	await promisify(exec)(`npm run build -- --outDir "${sortie}"`, { cwd: racine, env: environnement(recettes, referentiel, variables) });
 	return sortie;
+}
+
+/**
+ * Lance `astro dev` sans passer par `npx`, dont l'arrêt laisse vivre le serveur.
+ * `--ignore-lock` évite de remplacer ou de bloquer un serveur de dev déjà lancé dans le projet.
+ */
+async function lancerServeurDev(recettes: string, options: string[]) {
+	const serveur = spawn(process.execPath, [join(racine, 'node_modules/astro/bin/astro.mjs'), ...options, '--ignore-lock', '--port', '4390'], {
+		cwd: racine,
+		env: { ...environnement(recettes), NO_COLOR: '1', FORCE_COLOR: '0' },
+		detached: process.platform !== 'win32',
+	});
+	const arreter = async () => {
+		if (serveur.exitCode !== null || serveur.signalCode !== null) return;
+		const fin = once(serveur, 'exit');
+		// Le serveur peut avoir des processus enfants : on arrête toute l'arborescence.
+		if (process.platform === 'win32') spawn('taskkill', ['/pid', String(serveur.pid), '/t', '/f']);
+		else process.kill(-serveur.pid!, 'SIGKILL');
+		await fin;
+	};
+
+	let sortie = '';
+	try {
+		// Astro prend le port suivant si 4390 est occupé : on lit l'adresse qu'il annonce.
+		const url = await new Promise<string>((resoudre, rejeter) => {
+			const lire = (morceau: Buffer) => {
+				sortie += morceau.toString();
+				const adresse = sortie.match(/http:\/\/localhost:\d+\/scaling-octo-succotash\//)?.[0];
+				if (adresse) resoudre(adresse);
+			};
+			serveur.stdout.on('data', lire);
+			serveur.stderr.on('data', lire);
+			serveur.on('exit', (code) => rejeter(new Error(`astro dev s'est arrêté (code ${code}) :\n${sortie}`)));
+			setTimeout(() => rejeter(new Error(`astro dev n'a pas démarré :\n${sortie}`)), 60_000);
+		});
+		return { url, arreter, sortie: () => sortie };
+	} catch (erreur) {
+		await arreter();
+		throw erreur;
+	}
 }
 
 function liensInternes(html: string) {
@@ -85,16 +129,15 @@ describe('Brouillons', { timeout: 120_000 }, () => {
 		readdirSync(sortie, { recursive: true, withFileTypes: true })
 			.filter((entree) => entree.isFile())
 			.map((entree) => join(entree.parentPath, entree.name));
+	// Les fichiers de l'index Pagefind sont compressés : illisibles tels quels, ils ne prouveraient rien.
+	const lireContenu = (fichier: string) =>
+		/\.pf_\w+$/.test(fichier) ? gunzipSync(readFileSync(fichier)).toString('utf-8') : readFileSync(fichier, 'utf-8');
 
 	it("ne publie aucune trace d'un Brouillon, sans toucher aux autres Recettes", async () => {
 		const sortie = await construireSite('recettes-publiees');
 		try {
 			expect(existsSync(join(sortie, 'brouillon-secret'))).toBe(false);
 			expect(existsSync(join(sortie, 'tarte-aux-pommes/index.html'))).toBe(true);
-			// Les fichiers de l'index Pagefind sont compressés : illisibles tels quels, ils ne prouveraient rien.
-			const lireContenu = (fichier: string) =>
-				/\.pf_\w+$/.test(fichier) ? gunzipSync(readFileSync(fichier)).toString('utf-8') : readFileSync(fichier, 'utf-8');
-
 			expect(fichiers(sortie).some((fichier) => fichier.endsWith('.pf_fragment') && lireContenu(fichier).includes('Tarte aux pommes'))).toBe(true);
 			for (const fichier of fichiers(sortie)) {
 				expect(lireContenu(fichier), fichier).not.toContain('Brouillon secret');
@@ -105,18 +148,61 @@ describe('Brouillons', { timeout: 120_000 }, () => {
 		}
 	});
 
-	it("exclut les Brouillons même si l'environnement se dit en développement", async () => {
-		const sortie = mkdtempSync(join(tmpdir(), 'recettes-build-'));
-		const env: NodeJS.ProcessEnv = { ...process.env, RECETTES_DIR: 'tests/fixtures/recettes-publiees', REFERENTIEL_TAGS: 'tests/fixtures/tags.md' };
-		for (const variable of VARIABLES_VITEST) delete env[variable];
-		env.NODE_ENV = 'development';
+	it("ne publie ni la page ni l'image d'un Brouillon dont l'en-tête commence par un BOM", async () => {
+		const recettes = join(racine, 'tests/fixtures/recettes-publiees');
+		const entete = (titre: string, autres: string) =>
+			`---\ntitre: ${titre}\ndescription: Essai.\ncategorie: Plat\ntags: [rapide]\nportions: 2\ntempsPreparation: 0\ntempsCuisson: 0\n${autres}\ningredients:\n  - nom: eau\n---\n`;
+		const dossier = mkdtempSync(join(racine, 'tests/fixtures/.tmp-'));
 		try {
-			await promisify(exec)(`npm run build -- --outDir "${sortie}"`, { cwd: racine, env });
+			copyFileSync(join(recettes, 'brouillon-secret.jpg'), join(dossier, 'brouillon-avec-bom.jpg'));
+			copyFileSync(join(recettes, 'tarte-aux-pommes.jpg'), join(dossier, 'recette-publiee.jpg'));
+			writeFileSync(
+				join(dossier, 'brouillon-avec-bom.mdx'),
+				`﻿${entete('Brouillon avec BOM', 'brouillon: true\nphoto: ./brouillon-avec-bom.jpg')}\n1. Étape encore confidentielle.\n\n![Photo dans le contenu](./brouillon-avec-bom.jpg)\n`,
+			);
+			writeFileSync(join(dossier, 'recette-publiee.mdx'), `${entete('Recette publiée', 'photo: ./recette-publiee.jpg')}\n1. Étape.\n`);
+
+			const sortie = await construireSite(basename(dossier));
+			try {
+				expect(existsSync(join(sortie, 'recette-publiee/index.html'))).toBe(true);
+				expect(fichiers(sortie).some((fichier) => basename(fichier).startsWith('recette-publiee.'))).toBe(true);
+				expect(existsSync(join(sortie, 'brouillon-avec-bom'))).toBe(false);
+				expect(fichiers(sortie).filter((fichier) => basename(fichier).includes('brouillon-avec-bom'))).toEqual([]);
+				for (const fichier of fichiers(sortie)) {
+					expect(lireContenu(fichier), fichier).not.toContain('Brouillon avec BOM');
+				}
+			} finally {
+				rmSync(sortie, { recursive: true, force: true });
+			}
+		} finally {
+			rmSync(dossier, { recursive: true, force: true });
+		}
+	});
+
+	it("exclut les Brouillons même si l'environnement se dit en développement", async () => {
+		const sortie = await construireSite('recettes-publiees', 'tags.md', { NODE_ENV: 'development' });
+		try {
 			expect(existsSync(join(sortie, 'tarte-aux-pommes/index.html'))).toBe(true);
 			expect(existsSync(join(sortie, 'brouillon-secret'))).toBe(false);
 		} finally {
 			rmSync(sortie, { recursive: true, force: true });
 		}
+	});
+
+	it.each([
+		['astro dev', ['dev']],
+		['une option avant dev', ['--root', '.', 'dev']],
+	])('montre un Brouillon sous %s', async (_cas, options) => {
+		const serveur = await lancerServeurDev('recettes-publiees', options);
+		try {
+			const reponse = await fetch(`${serveur.url}brouillon-secret/`);
+
+			expect(reponse.status, serveur.sortie()).toBe(200);
+			expect(await reponse.text()).toContain('Brouillon secret');
+		} finally {
+			await serveur.arreter();
+		}
+		await expect(fetch(serveur.url), 'le serveur répond encore après son arrêt').rejects.toThrow();
 	});
 
 	it('réussit le build lorsque toutes les Recettes sont des Brouillons', async () => {
