@@ -33,4 +33,4 @@ Les cinq labels par défaut, inchangés. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
-Un seul contexte : `CONTEXT.md` et `docs/adr/` à la racine. See `docs/agents/domain.md`.
+Un seul contexte : `GLOSSARY.md` et `docs/adr/` à la racine. See `docs/agents/domain.md`.
