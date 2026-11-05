@@ -2,7 +2,7 @@
 import { Image } from 'astro:assets';
 import { render } from 'astro:content';
 import Layout from '../layouts/Layout.astro';
-import { lireRecettes } from '../recettes/acces-recettes';
+import { lireRecettes, slugCategorie } from '../recettes/acces-recettes';
 import IngredientsAjustables from '../recettes/IngredientsAjustables';
 import { groupesIngredients, tempsTotal } from '../recettes/schema';
 
@@ -14,30 +14,55 @@ export async function getStaticPaths() {
 const { recette } = Astro.props;
 const { Content } = await render(recette);
 const { titre, description, photo, categorie, tags, portions, tempsPreparation, tempsCuisson, tempsRepos } = recette.data;
+const base = import.meta.env.BASE_URL;
+
+const temps = [
+	{ libelle: 'Préparation', minutes: tempsPreparation },
+	{ libelle: 'Cuisson', minutes: tempsCuisson },
+	...(tempsRepos !== undefined ? [{ libelle: 'Repos', minutes: tempsRepos }] : []),
+	{ libelle: 'Total', minutes: tempsTotal(recette.data) },
+];
 ---
 
 <Layout titre={titre}>
-	<a class="retour" href={import.meta.env.BASE_URL}>Toutes les recettes</a>
-	<article data-pagefind-body>
-		<h1>{titre}</h1>
-		{photo && <Image src={photo} alt={titre} width={800} densities={[1, 2]} />}
-		<p>{description}</p>
-		<p class="categorie">{categorie}</p>
-		<ul class="tags">
-			{tags.map((tag) => (
-				<li>
-					<a href={`${import.meta.env.BASE_URL}?tag=${encodeURIComponent(tag)}`}>{tag}</a>
-				</li>
-			))}
+	<a class="retour" href={base}>Toutes les recettes</a>
+	<article data-pagefind-body class="mt-6">
+		<a
+			class="categorie inline-block py-1 text-sm font-semibold tracking-widest text-accent uppercase no-underline hover:underline"
+			href={`${base}categorie/${slugCategorie(categorie)}/`}>{categorie}</a
+		>
+		<h1 class="mt-1 mb-3">{titre}</h1>
+		<p class="mt-0 mb-5 text-xl text-discret italic">{description}</p>
+		{photo && <Image class="mb-5" src={photo} alt={titre} width={800} densities={[1, 2]} />}
+		<ul class="tags m-0 flex list-none flex-wrap gap-2 p-0">
+			{
+				tags.map((tag) => (
+					<li>
+						<a
+							class="inline-block rounded-full border border-separateur px-3 py-1 text-base no-underline hover:border-accent hover:underline"
+							href={`${base}?tag=${encodeURIComponent(tag)}`}
+						>
+							{tag}
+						</a>
+					</li>
+				))
+			}
 		</ul>
-		<ul class="temps" data-pagefind-ignore>
-			<li>Préparation : {tempsPreparation} min</li>
-			<li>Cuisson : {tempsCuisson} min</li>
-			{tempsRepos !== undefined && <li>Repos : {tempsRepos} min</li>}
-			<li>Total : {tempsTotal(recette.data)} min</li>
-		</ul>
-		<IngredientsAjustables client:load portions={portions} groupes={groupesIngredients(recette.data)} />
+		<IngredientsAjustables client:load portions={portions} groupes={groupesIngredients(recette.data)}>
+			<ul class="temps m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(7rem,1fr))] gap-x-4 gap-y-3 p-0">
+				{
+					temps.map(({ libelle, minutes }) => (
+						<li class="flex flex-col">
+							<span class="text-sm tracking-wide uppercase">{libelle}</span>
+							<span class="text-xl font-semibold text-texte">{minutes} min</span>
+						</li>
+					))
+				}
+			</ul>
+		</IngredientsAjustables>
 		<h2 data-pagefind-ignore>Étapes</h2>
-		<Content />
+		<div class="etapes">
+			<Content />
+		</div>
 	</article>
 </Layout>
