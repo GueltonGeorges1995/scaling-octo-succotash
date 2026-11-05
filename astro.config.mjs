@@ -7,6 +7,7 @@ import { close, createIndex } from 'pagefind';
 
 import react from '@astrojs/react';
 import mdx from '@astrojs/mdx';
+import tailwindcss from '@tailwindcss/vite';
 import { ecritureIndex } from './src/recettes/texte-recherche.ts';
 
 /**
@@ -54,5 +55,6 @@ export default defineConfig({
   site: 'https://gueltongeorges1995.github.io',
   base: '/scaling-octo-succotash/',
   output: 'static',
-  integrations: [contexteAstro(), react(), mdx(), indexPagefind()]
+  integrations: [contexteAstro(), react(), mdx(), indexPagefind()],
+  vite: { plugins: [tailwindcss()] },
 });
