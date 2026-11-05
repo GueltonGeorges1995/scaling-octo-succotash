@@ -18,6 +18,10 @@ _À éviter_ : composant, produit
 Un ensemble nommé d'Ingrédients d'une même Recette, comme « Pour la pâte » ; un même Ingrédient peut figurer dans plusieurs groupes.
 _À éviter_ : section, partie
 
+**Étape** :
+Une action numérotée d'une Recette, à réaliser dans l'ordre indiqué.
+_À éviter_ : instruction, consigne
+
 **Portions** :
 Le nombre de personnes pour lequel les quantités d'une Recette sont écrites.
 _À éviter_ : parts, couverts
