@@ -1,5 +1,7 @@
 ---
 import { lireCategories } from '../recettes/acces-recettes';
+import { NOM_DU_SITE } from '../site';
+import '@fontsource-variable/fraunces';
 import '../styles/global.css';
 
 interface Props {
@@ -23,19 +25,24 @@ const categories = await lireCategories();
 		<title>{titre}</title>
 	</head>
 	<body>
-		{
-			categories.length > 0 && (
-				<nav aria-label="Catégories">
-					<ul>
-						{categories.map(({ nom, slug }) => (
-							<li>
-								<a href={`${base}categorie/${slug}/`}>{nom}</a>
-							</li>
-						))}
-					</ul>
-				</nav>
-			)
-		}
+		<header class="border-b border-separateur print:hidden">
+			<div class="mx-auto flex max-w-page flex-wrap items-baseline gap-x-6 gap-y-1 px-4 py-3">
+				<a href={base} class="font-titre text-2xl font-semibold text-texte no-underline">{NOM_DU_SITE}</a>
+				{
+					categories.length > 0 && (
+						<nav aria-label="Catégories">
+							<ul class="m-0 flex list-none flex-wrap gap-x-5 gap-y-1 p-0">
+								{categories.map(({ nom, slug }) => (
+									<li>
+										<a href={`${base}categorie/${slug}/`}>{nom}</a>
+									</li>
+								))}
+							</ul>
+						</nav>
+					)
+				}
+			</div>
+		</header>
 		<main>
 			<slot />
 		</main>

@@ -13,6 +13,12 @@
 	--color-accent: #8a3b12;
 	--color-separateur: #d9d4ca;
 	--color-controle: #857f73;
+
+	/* La police des titres, auto-hébergée par Fontsource ; le texte courant reste en police système. */
+	--font-titre: 'Fraunces Variable', Georgia, serif;
+
+	/* La largeur de la colonne du site, partagée par l'en-tête et le contenu : max-w-page. */
+	--container-page: 44rem;
 }
 
 /* Doit rester après l'import : ces valeurs l'emportent sur celles de @theme par l'ordre des règles. */
@@ -126,34 +132,17 @@
 		overflow-wrap: anywhere;
 	}
 
-	nav,
 	main {
-		max-width: 44rem;
+		max-width: var(--container-page);
 		margin-inline: auto;
 		padding-inline: 1rem;
-	}
-
-	nav {
-		padding-block: 0.75rem;
-		border-bottom: 1px solid var(--color-separateur);
-	}
-
-	nav ul {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.25rem 1.25rem;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	main {
 		padding-block: 1.5rem 3rem;
 	}
 
 	h1,
 	h2,
 	h3 {
+		font-family: var(--font-titre);
 		line-height: 1.2;
 		text-wrap: balance;
 	}
@@ -324,7 +313,6 @@
 			font-size: 11pt;
 		}
 
-		nav,
 		.retour,
 		.recherche,
 		.selecteur-portions button {
